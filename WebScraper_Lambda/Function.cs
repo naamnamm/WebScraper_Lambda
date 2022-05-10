@@ -9,22 +9,6 @@ namespace WebScraper_Lambda;
 public class Function
 {
     
-    /// <summary>
-    /// A simple function that takes a string and does a ToUpper
-    /// </summary>
-    /// <param name="input"></param>
-    /// <param name="context"></param>
-    /// <returns></returns>
-   
-    //original
-    //public string FunctionHandler(MyData data, ILambdaContext context)
-    //{
-    //    List<Rental> rentalList = GetHTMLAsync();
-
-    //    return $"Hello {data.Name}".ToUpper();
-    //}
-
-    //refactor
     public List<Rental> FunctionHandler()
     {
         List<Rental> rentalList = GetHTMLAsync();
@@ -101,14 +85,6 @@ public class Function
         return rentals;
     }
 
-    public class MyData
-    {
-        public MyData(string name)
-        {
-            Name = name;
-        }
-        public string Name { get; set; }
-    }
 }
 
 
