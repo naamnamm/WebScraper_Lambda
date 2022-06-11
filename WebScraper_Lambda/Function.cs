@@ -1,5 +1,11 @@
 using Amazon.Lambda.Core;
+using FluentEmail.Core;
+using FluentEmail.Razor;
+using FluentEmail.Smtp;
 using HtmlAgilityPack;
+using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Mail;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -8,13 +14,84 @@ namespace WebScraper_Lambda;
 
 public class Function
 {
-    
-    public List<Rental> FunctionHandler()
+    public async Task FunctionHandler()
     {
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("config.json", optional: false);
+
+        IConfiguration config = builder.Build();
+
+        var mail = config.GetSection("Mail").Get<Mail>();
+
         List<Rental> rentalList = GetHTMLAsync();
 
-        return rentalList;
+        await sendEmail(rentalList, mail);
     }
+
+    private static async Task sendEmail(List<Rental> rentalList, Mail mail)
+    {
+        try
+        {
+            var sender = new SmtpSender(() => new SmtpClient()
+            {
+                //sender pondpattohs@gmail.com connect to gmail server
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false,
+                EnableSsl = true,
+                Host = "smtp.mail.yahoo.com",
+                Port = 587,
+                Credentials = new NetworkCredential(mail.Username, mail.Password)
+
+            });
+
+            var template = @"  
+                    Hey @Model.Name, here is your daily rental list. 
+                    @for(var i = 1; i < @Model.RentalList.Count; i++) 
+                    {                        
+                        <p>
+                            <b>Item:</b> @i
+                            <br>
+                            <b>Title:</b> @Model.RentalList[i].Title 
+                            <br>
+                            <b>Location:</b> @Model.RentalList[i].Location 
+                            <br>
+                            <b>SquareFootage:</b> @Model.RentalList[i].SquareFootage 
+                            <br>
+                            <b>Price:</b> @Model.RentalList[i].Price
+                            <br>
+                            <b>Link:</b> @Model.RentalList[i].Link
+                        </p>
+                    }
+
+                ";
+
+            var model = new { Name = "Naam", RentalList = rentalList };
+
+            Email.DefaultSender = sender;
+            Email.DefaultRenderer = new RazorRenderer();
+
+            var email = await Email
+                .From("naam.namm@yahoo.com")
+                .To("naam.pt@gmail.com", "Naam")
+                .Subject("Daily Rental List")
+                .UsingTemplate(template, model)
+                .SendAsync();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    //public List<Rental> FunctionHandler()
+    //{
+    //    List<Rental> rentalList = GetHTMLAsync();
+
+    //    return rentalList;
+    //}
 
     private static List<Rental> GetHTMLAsync()
     {
@@ -88,4 +165,3 @@ public class Function
 }
 
 
-//https://www.youtube.com/watch?v=IHIJFVUQyFY&list=PL59L9XrzUa-nYfftB6rfzo-GFCIbufdVO
